@@ -20,7 +20,11 @@ module ActiveJob
           payload = {adapter: job.class.queue_adapter, job: job}
           ActiveSupport::Notifications.instrument("perform_start.active_job", payload.dup)
           ActiveSupport::Notifications.instrument("perform.active_job", payload) do
-            block.call
+            begin
+              block.call
+            rescue Exception => e
+              ActiveSupport::Notifications.instrument("perform_error.active_job", payload.merge(error: e))
+            end
           end
         end
       end
@@ -76,6 +80,18 @@ module ActiveJob
         info do
           job = event.payload[:job]
           "Performed #{job.class.name} from #{queue_name(event)} in #{event.duration.round(2)}ms"
+        end
+      end
+
+      def perform_error(event)
+        error do
+          job = event.payload[:job]
+          "Failed to perform #{job.class.name} from #{queue_name(event)}. Backtrace is:"
+        end
+
+        e = event.payload[:error]
+        e.backtrace.each do |line|
+          error { line }
         end
       end
 
