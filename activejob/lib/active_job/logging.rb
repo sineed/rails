@@ -84,12 +84,12 @@ module ActiveJob
       end
 
       def perform_error(event)
+        e = event.payload[:error]
+        job = event.payload[:job]
         error do
-          job = event.payload[:job]
-          "Failed to perform #{job.class.name} from #{queue_name(event)}. Backtrace is:"
+          "Failed to perform #{job.class.name} from #{queue_name(event)}. Backtrace is: #{e.message}"
         end
 
-        e = event.payload[:error]
         e.backtrace.each do |line|
           error { line }
         end
